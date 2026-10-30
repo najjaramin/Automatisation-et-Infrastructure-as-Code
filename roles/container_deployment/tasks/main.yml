@@ -1,0 +1,27 @@
+---
+- name: Créer le dossier de l'application
+  ansible.builtin.file:
+    path: /opt/demo
+    state: directory
+    mode: '0755'
+
+- name: Copier le Dockerfile et le fichier index.html
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /opt/demo/
+    mode: '0644'
+  loop:
+    - Dockerfile
+    - index.html
+
+- name: Copier le docker-compose.yml
+  ansible.builtin.copy:
+    src: docker-compose.yml
+    dest: /opt/demo/docker-compose.yml
+    mode: '0644'
+
+- name: S'assurer que les conteneurs sont lancés (Docker Compose)
+  community.docker.docker_compose_v2:
+    project_src: /opt/demo
+    state: present
+    build: always

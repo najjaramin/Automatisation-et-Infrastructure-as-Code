@@ -1,0 +1,5 @@
+*.retry
+.vscode/
+.idea/
+*.log
+ansible/.ssh/

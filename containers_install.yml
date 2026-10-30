@@ -1,0 +1,94 @@
+---
+- name: Installer Jenkins, Docker, Portainer et le conteneur web
+  hosts: nodes
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Installer les prérequis de base
+      ansible.builtin.apt:
+        name: [ca-certificates, curl, gnupg, python3-pip, openjdk-21-jre]
+        state: present
+        update_cache: true
+
+    # ==========================================
+    # --- JENKINS ---
+    # ==========================================
+    - name: Supprimer l'ancienne clé Jenkins (si elle existe)
+      ansible.builtin.file:
+        path: /usr/share/keyrings/jenkins-keyring.asc
+        state: absent
+
+    - name: Supprimer l'ancien dépôt Jenkins (si il existe)
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/jenkins.list
+        state: absent
+
+    - name: Ajouter la nouvelle clé Jenkins (2026)
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+        mode: '0644'
+
+    - name: Ajouter le dépôt Jenkins
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        filename: jenkins
+        state: present
+
+    - name: Installer Jenkins
+      ansible.builtin.apt:
+        name: jenkins
+        state: present
+        update_cache: true
+
+    # ==========================================
+    # --- DOCKER ---
+    # ==========================================
+    - name: Installer Docker et Docker Compose
+      ansible.builtin.apt:
+        name: [docker.io, docker-compose-v2]
+        state: present
+
+    - name: Démarrer et activer le service Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Ajouter l'utilisateur devops au groupe docker
+      ansible.builtin.user:
+        name: devops
+        groups: docker
+        append: true
+
+    # ==========================================
+    # --- PORTAINER & CONTENEUR WEB ---
+    # ==========================================
+    - name: Créer le dossier de l'application
+      ansible.builtin.file:
+        path: /opt/demo
+        state: directory
+        mode: '0755'
+
+    - name: Copier le Dockerfile et le fichier index.html
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: /opt/demo/
+        mode: '0644'
+      loop:
+        - Dockerfile
+        - index.html
+
+    - name: Copier le docker-compose.yml
+      ansible.builtin.copy:
+        src: docker-compose.yml
+        dest: /opt/demo/docker-compose.yml
+        mode: '0644'
+
+    - name: Lancer la stack (Docker Compose)
+      ansible.builtin.command:
+        cmd: docker compose up -d --build
+        chdir: /opt/demo
+      register: compose_up
+      changed_when: "'Started' in compose_up.stderr or 'Created' in compose_up.stderr or 'Built' in compose_up.stderr"

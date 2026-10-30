@@ -1,0 +1,30 @@
+---
+- name: Installer les prérequis (Java inclus)
+  ansible.builtin.apt:
+    name: [ca-certificates, curl, gnupg, openjdk-21-jre]
+    state: present
+    update_cache: true
+
+- name: Ajouter la clé Jenkins
+  ansible.builtin.get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key
+    dest: /usr/share/keyrings/jenkins-keyring.asc
+    mode: '0644'
+
+- name: Ajouter le dépôt Jenkins
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+    filename: jenkins
+    state: present
+
+- name: Installer Jenkins
+  ansible.builtin.apt:
+    name: jenkins
+    state: present
+    update_cache: true
+
+- name: Démarrer et activer Jenkins
+  ansible.builtin.service:
+    name: jenkins
+    state: started
+    enabled: true
