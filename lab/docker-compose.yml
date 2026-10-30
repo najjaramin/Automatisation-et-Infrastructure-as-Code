@@ -1,0 +1,6 @@
+version: '3.8'
+services:
+  web:
+    image: nginxdemos/hello:plain-text
+    ports:
+      - "8080:80"

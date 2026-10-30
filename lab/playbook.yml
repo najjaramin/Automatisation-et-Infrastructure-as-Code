@@ -1,0 +1,73 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    # 1. Installation de Docker
+
+    - name: Donner les droits d'accès au socket Docker pour tout le monde (pour le TP)
+      file:
+        path: /var/run/docker.sock
+        mode: '0666'
+
+
+
+    - name: Installer les dépendances Docker
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Ajouter la clé GPG Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Ajouter le dépôt Docker
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu noble stable
+        state: present
+
+    - name: Installer Docker CE
+      apt:
+        name: docker-ce
+        state: present
+        update_cache: yes
+
+    - name: Installer docker-compose
+      apt:
+        name: docker-compose-plugin
+        state: present
+
+    # 2. Lancer Portainer
+    - name: Créer un volume pour Portainer
+      docker_volume:
+        name: portainer_data
+        state: present
+
+    - name: Lancer Portainer
+      docker_container:
+        name: portainer
+        image: portainer/portainer-ce:latest
+        restart_policy: always
+        ports:
+          - "9000:9000"
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - portainer_data:/data
+
+    # 3. Copier et lancer le docker-compose
+    - name: Copier le docker-compose.yml
+      copy:
+        src: docker-compose.yml
+        dest: /home/vagrant/docker-compose.yml
+        owner: vagrant
+        group: vagrant
+
+    - name: Lancer le conteneur web (docker-compose)
+      command: docker compose up -d
+      args:
+        chdir: /home/vagrant

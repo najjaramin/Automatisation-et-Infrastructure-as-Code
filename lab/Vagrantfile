@@ -1,0 +1,26 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+  config.vm.boot_timeout = 300
+
+  {
+    "lab1" => { ip: "192.168.56.11", portainer: 9001, app: 8081 },
+    "lab2" => { ip: "192.168.56.12", portainer: 9011, app: 8091 }
+  }.each do |name, c|
+    config.vm.define name do |m|
+      m.vm.hostname = name
+      m.vm.network "private_network", ip: c[:ip]
+      m.vm.network "forwarded_port", guest: 9000, host: c[:portainer]
+      m.vm.network "forwarded_port", guest: 8080, host: c[:app]
+
+      m.vm.provider "virtualbox" do |vb|
+        vb.name   = name
+        vb.memory = 2048
+        vb.cpus   = 2
+      end
+
+      m.vm.provision "ansible" do |a|
+        a.playbook = "playbook.yml"
+      end
+    end
+  end
+end
